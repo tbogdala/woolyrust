@@ -1,0 +1,3 @@
+[submodule "woolycore"]
+	path = woolycore
+	url = https://github.com/tbogdala/woolycore.git
