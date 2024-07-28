@@ -9,3 +9,7 @@ cmake = "0.1.50"
 
 [dependencies]
 anyhow = "1.0.86"
+
+[features]
+cuda = []
+# metal is automatically assumed on macos buildss
