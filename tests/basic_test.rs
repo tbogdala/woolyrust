@@ -8,7 +8,7 @@ pub fn load_test() {
     model_params.n_gpu_layers = 100;
     let mut context_params = woolyrust::get_default_context_params();
     context_params.seed = 42;
-    context_params.n_ctx = 0;
+    context_params.n_ctx = 1024 * 2;
 
     let model_filepath = get_test_model_path();
     let mut llama = Llama::new();
