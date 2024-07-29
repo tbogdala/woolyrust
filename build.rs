@@ -1,25 +1,56 @@
-
-use std::{env, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use cmake::Config;
 
 fn main() {
+    let is_release = env::var("OPT_LEVEL").map(|val| val == "3").unwrap_or(false);
     let out_path = PathBuf::from(env::var("OUT_DIR").expect("No out dir found"));
     compile_bindings(&out_path);
 
-    let dst = 
-        if cfg!(feature = "cuda") {
-            Config::new("woolycore")
-            .define("GGML_CUDA", "On")
-                 .build()
-        } else { 
-            Config::new("woolycore")
-                 .build()
-        };
+    // startup a new cmake config for our library
+    let mut config: &mut Config = &mut Config::new("woolycore");
+
+    // enable the CUDA flags if the feature is present
+    // NOTE: metal is automatically enabled in the upstream library and needs
+    // no special intervention.
+    if cfg!(feature = "cuda") {
+        config = config.define("GGML_CUDA", "On")
+    }
+
+    // a few more flags for Windows to make sure that it creates a dll that
+    // exports all of the functions we want to export.
+    if std::env::consts::OS == "windows" {
+        config = config.define("CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS", "TRUE")
+            .define("BUILD_SHARED_LIBS", "TRUE");
+    }
+
+    let dst = config.build();
     let build_folder = dst.join("build");
     println!("cargo:rustc-link-search=native={}", build_folder.display());
     println!("cargo:rustc-link-search=native={}", dst.join("lib").display());
     println!("cargo:rustc-link-lib=dylib=woolycore");
+
+    // Windows is the special child, like always. Do some extra path and
+    // file management to make things smoother.
+    if std::env::consts::OS == "windows" {
+        let dll_folder_str = if is_release { "Release" } else { "Debug" };
+        let dll_folder = build_folder.join(dll_folder_str);
+        println!("cargo:rustc-link-search=native={}", dll_folder.display());    
+
+        // the upstream llama.cpp dlls get placed in a different directory
+        // so we're going to copy them into the target folder manually.
+        let bin_folder = dst.join("bin");
+        let llama_dll_path = bin_folder.join("llama.dll");
+        let ggml_dll_path = bin_folder.join("ggml.dll");
+
+
+        if llama_dll_path.exists() {
+            fs::copy(llama_dll_path, dll_folder.join("llama.dll")).expect("unable to copy upstream llama.dll to target dir");
+        }
+        if ggml_dll_path.exists() {
+            fs::copy(ggml_dll_path, dll_folder.join("ggml.dll")).expect("unable to copy upstream ggml.dll to target dir");
+        }
+    }
 }
 
 fn compile_bindings(out_path: &PathBuf) {

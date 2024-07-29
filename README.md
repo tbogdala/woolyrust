@@ -6,7 +6,7 @@ library builds upon are are provided by the [woolycore](https://github.com/tbogd
 
 At present, it is in pre-alpha development and the API is unstable. 
 
-Supported Operating Systems: MacOS, Linux
+Supported Operating Systems: Windows, MacOS, Linux
 
 
 ## License
@@ -31,17 +31,18 @@ the API bindings code - all automatically, so a simple `cargo build` suffices.
 cargo build --release
 ```
 
-This should automatically include Metal support and embed the shaders if the library is being built on MacOS. For
-CUDA systems, a feature called `cuda` has been added, which needs to be supplied for CUDA accelleration. This
-will greatly increase the compile time of the project. An example build command to enable cuda would be:
+This should automatically include Metal support and embed the shaders if the library is being built on MacOS.
+
+For CUDA systems, a feature called `cuda` has been added, which needs to be supplied for CUDA acceleration. This
+will greatly increase the compile time of the project. An example build command to enable CUDA would be:
 
 ```bash
 cargo build --release features cuda
 ```
 
 NOTE: Upstream `llamacpp` makes heavy use of cmake build files and `woolycore` has adopted them to avoid
-duplication of effort and to greatly ease maintenance. This unfortunately means cmake is a required 
-dependency to build the library.
+duplication of effort and to greatly ease maintenance. This unfortunately means cmake is a **required 
+dependency** to build the library.
 
 
 ## Git updates
@@ -64,7 +65,13 @@ export WOOLY_TEST_MODEL_FILE=models/example-llama-3-8b.gguf
 cargo test --release -- --nocapture --test-threads 1
 ```
 
-Don't forget to add `--features cuda` for CUDA accelleration on windows/linux platforms if that
+On windows, setting the environment may look something like this:
+
+```bash
+set WOOLY_TEST_MODEL_FILE=models/example-llama-3-8b.gguf
+```
+
+Don't forget to add `--features cuda` for CUDA acceleration on Windows/Linux platforms if that
 is desired.
 
 
