@@ -3,7 +3,7 @@ use std::{ffi::CStr, fs::read_to_string, io::Write, process::exit};
 use woolyrust::Llama;
 
 #[test]
-pub fn load_test() {
+pub fn basic_test() {
     let mut model_params = woolyrust::get_default_model_params();
     model_params.n_gpu_layers = 100;
     let mut context_params = woolyrust::get_default_context_params();

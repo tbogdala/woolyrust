@@ -20,6 +20,8 @@ MIT licensed, like the core upstream `llama.cpp` it wraps. See `LICENSE` for det
 * Basic samplers of llama.cpp, including: temp, top-k, top-p, min-p, tail free sampling, locally typical sampling, mirostat.
 * Support for llama.cpp's BNF-like grammar rules for sampling.
 * Ability to cache the processed prompt data in memory so that it can be reused to speed up regeneration using the exact same prompt.
+* Tokenize text or just get the number of tokens for a given text string.
+* Generate embeddings using models such as `nomic-ai/nomic-embed-text-v1.5-GGUF` on HuggingFace in a batched process.
 
 
 ## Build notes
@@ -73,6 +75,10 @@ set WOOLY_TEST_MODEL_FILE=models/example-llama-3-8b.gguf
 
 Don't forget to add `--features cuda` for CUDA acceleration on Windows/Linux platforms if that
 is desired.
+
+To run the embeddings unit test, you have to set the environment variable (`WOOLY_TEST_EMB_MODEL_FILE`)
+as well. This should be set to a GGUF file for the embedding model to use for those tests. At present,
+the tests are designed for `nomic-ai/nomic-embed-text-v1.5-GGUF`.
 
 
 ## Final Notes
