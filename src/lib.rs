@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::{ffi::{c_void, CStr, CString}, ptr::{null, null_mut}};
+use std::{ffi::{c_void, CStr, CString}, ptr::null_mut};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub type Token = i32;

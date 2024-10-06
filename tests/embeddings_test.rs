@@ -8,7 +8,6 @@ pub fn embeddings_test() {
     let mut model_params = woolyrust::get_default_model_params();
     model_params.n_gpu_layers = 100;
     let mut context_params = woolyrust::get_default_context_params();
-    context_params.seed = 42;
     context_params.n_ctx = 2048;
 
     // the test is designed for nomic-ai/nomic-embed-text-v1.5-GGUF which has 2048 context by default.

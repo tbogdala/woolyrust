@@ -7,7 +7,6 @@ pub fn basic_test() {
     let mut model_params = woolyrust::get_default_model_params();
     model_params.n_gpu_layers = 100;
     let mut context_params = woolyrust::get_default_context_params();
-    context_params.seed = 42;
     context_params.n_ctx = 1024 * 2;
 
     let model_filepath = get_test_model_path();
@@ -52,7 +51,7 @@ pub fn basic_test() {
     params.seed = 1337;
     let (results, _prediction) = llama.predict_text(&mut params, prompt, Some(&antiprompts), None, Some(predict_callback)).expect("Failed to run the prediction");
     assert_eq!(results.result, 0);
-    assert_eq!(results.n_p_eval, 0); // test to see if prompt processing was successfully skipped
+    assert_eq!(results.n_p_eval, 1); // test to see if prompt processing was successfully skipped (min value upstream is now 1)
 
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ({:.2} T/s) ; {} prompt tokens in {:.2} ms ({:.2} T/s)\n\n",
