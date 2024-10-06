@@ -37,7 +37,7 @@ For CUDA systems, a feature called `cuda` has been added, which needs to be supp
 will greatly increase the compile time of the project. An example build command to enable CUDA would be:
 
 ```bash
-cargo build --release features cuda
+cargo build --release --features cuda
 ```
 
 NOTE: Upstream `llamacpp` makes heavy use of cmake build files and `woolycore` has adopted them to avoid
@@ -81,4 +81,4 @@ the tests are designed for `nomic-ai/nomic-embed-text-v1.5-GGUF`.
 
 ## Final Notes
 
-* Was unsuccessful getting `woolycore` to build with cmake and get statically linked to upstream `llama.cpp` code...
+* Was unsuccessful getting `woolycore` to build statically for CUDA targets...
