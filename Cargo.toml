@@ -1,6 +1,6 @@
 [package]
 name = "woolyrust"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 [build-dependencies]
@@ -12,4 +12,4 @@ anyhow = "1.0.86"
 
 [features]
 cuda = []
-# metal is automatically assumed on macos buildss
+# metal is automatically assumed on macos builds

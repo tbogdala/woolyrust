@@ -27,6 +27,108 @@ pub enum EmbeddingNormalization {
     PNorm = 3,
 }
 
+// This is a wrapper struct to encapsulate the raw C pointer used in this FFI library.
+// It adds some convenience functions for converting to the C pointer needed as well
+// as making sure to free itself when it's dropped from scope.
+#[derive(Debug)]
+pub struct FrozenState {
+    pub is_alive: bool,
+    cache_ptr: *mut c_void,
+}
+impl Into<*mut c_void> for &mut FrozenState {
+    fn into(self) -> *mut c_void {
+        self.cache_ptr  
+    }
+}
+impl Drop for FrozenState {
+    fn drop(&mut self) {
+        unsafe {
+            wooly_free_prompt_cache(self.cache_ptr);
+            self.cache_ptr = null_mut();
+        }
+        self.is_alive = false;
+    }
+}
+
+// This is a wrapper struct to encapsulate the raw C pointer used in this FFI library.
+// It adds some convenience functions for converting to the C pointer needed as well
+// as making sure to free itself when it's dropped from scope.
+#[derive(Debug)]
+pub struct GptSampler {
+    pub is_alive: bool,
+    cache_ptr: *mut c_void,
+}
+impl Into<*mut c_void> for &mut GptSampler {
+    fn into(self) -> *mut c_void {
+        self.cache_ptr  
+    }
+}
+impl Drop for GptSampler {
+    fn drop(&mut self) {
+        unsafe {
+            wooly_free_sampler(self.cache_ptr);
+            self.cache_ptr = null_mut();
+        }
+        self.is_alive = false;
+    }
+}
+
+// Rust's lifetime management makes it necessary to make sure the CStrings
+// and native pointers stay alive as long as the parameters do, so this
+// structure was made to contain them as hidden members. The structure's
+// functions should be used to set prompt, antiprompt and grammar strings.
+pub struct ManagedGptParams {
+    pub params: wooly_gpt_params,
+    native_prompt: Option<CString>,
+    native_grammar: Option<CString>,
+    native_antis: Option<Vec<CString>>,
+    native_antips: Option<Vec<*const i8>>,
+}
+impl ManagedGptParams {
+    pub fn defaults() -> Self {
+        Self { 
+            params: new_text_gen_params(), 
+            native_prompt: None,
+            native_grammar: None,
+            native_antis: None,
+            native_antips: None,
+        }
+    }
+
+    pub fn set_prompt(&mut self, prompt: &str) {
+        // allocate the prompt
+        let native = CString::new(prompt).expect("Invalid prompt string");
+        self.params.prompt = native.as_ptr();
+        self.native_prompt = Some(native);
+    }
+
+    pub fn set_grammar(&mut self, grammar: &str) {
+        // allocate the grammar string
+        let native = CString::new(grammar).expect("Invalid grammar string");
+        self.params.grammar = native.as_ptr();
+        self.native_grammar = Some(native);
+    }
+
+    pub fn set_antiprompts(&mut self, antiprompts: &Vec<&str>) {
+        // allocate the antipompts
+        // we store the CStrings for the antiprompts as well as building a vector of pointers to send to the library
+        let mut native_anti_strings: Vec<CString>;
+        let mut native_anti_pointers: Vec<*const i8>;
+        let count = antiprompts.len();
+        native_anti_strings = Vec::with_capacity(count);
+        native_anti_pointers = Vec::with_capacity(count);
+        for antiprompt in antiprompts {
+            let native_anti = CString::new(*antiprompt).expect("Invalid antiprompt string");
+            native_anti_pointers.push(native_anti.as_ptr());
+            native_anti_strings.push(native_anti);
+        }
+        self.params.antiprompts = native_anti_pointers.as_mut_ptr();
+        self.params.antiprompt_count = count as i32;
+        self.native_antis = Some(native_anti_strings);
+        self.native_antips = Some(native_anti_pointers);
+    }
+}
+
 
 pub fn get_default_model_params() -> wooly_llama_model_params {
     unsafe {
@@ -149,54 +251,85 @@ impl Llama {
         self.loaded_model_params = None;
     }
 
+    // returns true if the model has been loaded and there's a valid context.
     pub fn is_loaded(&self) -> bool {
         return !self.ctx.is_null() && !self.model.is_null();
+    }
+
+    // takes the gpt parameters and processes the included prompt within the loaded
+    // model's context. one the prefil is complete, it will return the number of
+    // tokens processed as well as the sampler created.
+    pub fn process_prompt(&mut self, params: &mut ManagedGptParams) -> (i32, GptSampler){
+        let results: wooly_process_prompt_results;
+        unsafe {
+            results = wooly_process_prompt(params.params, self.ctx, self.model);
+        }
+        (results.result, GptSampler{is_alive:true, cache_ptr: results.gpt_sampler})
+    }
+
+    // simply samples the next token based on the sampler provided. this does not
+    // do a forward process on the model - to do that, call `process_next_token()`.
+    pub fn sample_next_token(&mut self, sampler: &mut GptSampler) -> Token {
+        unsafe {
+            wooly_sample_next(self.ctx, sampler.into())
+        }
+    }
+
+    // runs the provided `next_token` through the forward pass of the model, at the
+    // given `position` in the context. this is a heavy computation and when it's done
+    // `sample_next_token()` can be called to get another token. returns true if
+    // the operation was successful.
+    pub fn process_next_token(&mut self, next_token: Token, position: i32) -> bool {
+        unsafe {
+            let result = wooly_process_next_token(self.ctx, next_token, position);
+            result == 0
+        }
+    }
+
+    // this method freezes the state of the model and stores it in the returned `FrozenState`.
+    // this accounts for the prompt tokens from the `params` passed in. `tokens_opt` should
+    // be provided if token prediction was performed after calling `process_prompt()` and the
+    // frozen state will then encapsulate the newly predicted tokens as well.
+    pub fn freeze(&mut self, params: &mut ManagedGptParams, tokens_opt: Option<&mut TokenList>) -> FrozenState {
+        let ptr: *mut c_void;
+        unsafe {
+            if let Some(tokens) = tokens_opt {
+                ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
+                    tokens.as_mut_ptr(), tokens.len() as i32);
+            } else {
+                ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
+                    null_mut(), 0);
+            }
+        }
+
+        FrozenState{is_alive: true, cache_ptr: ptr}
+    }
+
+    // this method defrosts the frozen state of the model from the `frozen_state` parameter and
+    // resets the model's loaded context to it. it returns the number of frozen tokens processed
+    // and the new sampler that should be used when sampling from the current model state.
+    pub fn defrost(&mut self, params: &mut ManagedGptParams, frozen_state: &FrozenState) -> (i32, GptSampler) {
+        let results: wooly_process_prompt_results;
+        unsafe {
+            results = wooly_defrost_prediction_state(params.params, self.ctx, self.model, frozen_state.cache_ptr.into());
+        }
+
+        (results.result, GptSampler{is_alive:true, cache_ptr: results.gpt_sampler})
     }
 
     // This function does the text prediction using the loaded LLM. The parameters to the function take
     // precedence over the similarly named fields in `params` as a convenience so that the lifetimes
     // of the C-compatible strings are managed for the caller.
     pub fn predict_text(&mut self, 
-        params: &mut wooly_gpt_params, 
-        prompt: &str, 
-        antiprompts_opt: Option<&Vec<&str>>,
-        grammar_opt: Option<&str>,
+        params: &mut ManagedGptParams, 
         callback: wooly_token_update_callback,
     ) -> anyhow::Result<(wooly_predict_result, String)> {
-        // allocate the prompt
-        let native_prompt = CString::new(prompt).expect("Invalid prompt string");
-        params.prompt = native_prompt.as_ptr();
-
-        // allocate the grammar string
-        let native_grammar: CString;
-        if let Some(grammar) = grammar_opt {
-            native_grammar = CString::new(grammar).expect("Invalid grammar string");
-            params.grammar = native_grammar.as_ptr();
-        }
-
-        // allocate the antipompts
-        // we store the CStrings for the antiprompts as well as building a vector of pointers to send to the library
-        let mut native_anti_strings: Vec<CString>;
-        let mut native_anti_pointers: Vec<*const i8>;
-        if let Some(antiprompts) = antiprompts_opt {
-            let count = antiprompts.len();
-            native_anti_strings = Vec::with_capacity(count);
-            native_anti_pointers = Vec::with_capacity(count);
-            for antiprompt in antiprompts {
-                let native_anti = CString::new(*antiprompt).expect("Invalid antiprompt string");
-                native_anti_pointers.push(native_anti.as_ptr());
-                native_anti_strings.push(native_anti);
-            }
-            params.antiprompts = native_anti_pointers.as_mut_ptr();
-            params.antiprompt_count = count as i32;
-        }
-
         // allocate the output string towards a maximum of 4-bytes per utf-8 worst case for the whole context
         // and a generous estimate of 10 characters per token.
         let predicted_text_size = (self.loaded_context_len * 4 * 10) as i64 ;
         let mut predicted_text = Vec::with_capacity((predicted_text_size) as usize);
         let prediction_result = unsafe { 
-            wooly_predict(*params, self.ctx, self.model, false, predicted_text.as_mut_ptr(), predicted_text_size, self.prompt_cache, callback) 
+            wooly_predict(params.params, self.ctx, self.model, false, predicted_text.as_mut_ptr(), predicted_text_size, self.prompt_cache, callback) 
         };
 
         if prediction_result.result != 0 {
@@ -204,13 +337,13 @@ impl Llama {
         }
 
         // handle freeing any previous prompt_cache and store the new one, if requested to by the caller
-        if (!self.prompt_cache.is_null() && self.prompt_cache != prediction_result.prompt_cache) || !params.prompt_cache_all {
+        if (!self.prompt_cache.is_null() && self.prompt_cache != prediction_result.prompt_cache) || !params.params.prompt_cache_all {
             unsafe { 
                 wooly_free_prompt_cache(self.prompt_cache) 
             };
             self.prompt_cache = null_mut();
         }
-        if params.prompt_cache_all {
+        if params.params.prompt_cache_all {
             self.prompt_cache = prediction_result.prompt_cache;
         }
 

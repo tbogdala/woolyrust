@@ -1,6 +1,6 @@
 use std::{ffi::CStr, fs::read_to_string, io::Write, process::exit};
 
-use woolyrust::Llama;
+use woolyrust::{Llama, ManagedGptParams};
 
 #[test]
 pub fn basic_test() {
@@ -15,25 +15,27 @@ pub fn basic_test() {
     assert_eq!(load_success, true);
     assert_eq!(llama.is_loaded(), true);
 
-    let mut params = woolyrust::new_text_gen_params();
-    params.seed = 42;
-    params.n_threads = 4;
-    params.n_predict = 100;
-    params.temp = 0.1;
-    params.top_k = 1;
-    params.top_p = 1.0;
-    params.min_p = 0.1;
-    params.penalty_repeat = 1.1;
-    params.penalty_last_n = 512;
-    params.ignore_eos = false;
-    params.flash_attn = true;
-    params.n_batch = 128;
-    params.prompt_cache_all = true;
+    let mut params = ManagedGptParams::defaults();
+    params.params.seed = 42;
+    params.params.n_threads = 4;
+    params.params.n_predict = 100;
+    params.params.temp = 0.1;
+    params.params.top_k = 1;
+    params.params.top_p = 1.0;
+    params.params.min_p = 0.1;
+    params.params.penalty_repeat = 1.1;
+    params.params.penalty_last_n = 512;
+    params.params.ignore_eos = false;
+    params.params.flash_attn = true;
+    params.params.n_batch = 128;
+    params.params.prompt_cache_all = true;
     
     let antiprompts = vec!["<|end|>"];
     let prompt =  "<|user|>\nWrite the start to the next movie collaboration between Quentin Tarantino and Robert Rodriguez.<|end|>\n<|assistant|>\n";
+    params.set_prompt(prompt);
+    params.set_antiprompts(&antiprompts);
 
-    let (results, prediction) = llama.predict_text(&mut params, prompt, Some(&antiprompts), None, None).expect("Failed to run the prediction");
+    let (results, prediction) = llama.predict_text(&mut params, None).expect("Failed to run the prediction");
     assert_eq!(results.result, 0);
 
     // the first prediction is done without the callback for tokens, so we make sure to print out the result
@@ -48,8 +50,8 @@ pub fn basic_test() {
         1e3 / results.t_p_eval_ms * results.n_p_eval as f64);
 
     // change the seed and try another prediction to see if prompt caching is working.
-    params.seed = 1337;
-    let (results, _prediction) = llama.predict_text(&mut params, prompt, Some(&antiprompts), None, Some(predict_callback)).expect("Failed to run the prediction");
+    params.params.seed = 1337;
+    let (results, _prediction) = llama.predict_text(&mut params, Some(predict_callback)).expect("Failed to run the prediction");
     assert_eq!(results.result, 0);
     assert_eq!(results.n_p_eval, 1); // test to see if prompt processing was successfully skipped (min value upstream is now 1)
 
@@ -63,10 +65,12 @@ pub fn basic_test() {
         1e3 / results.t_p_eval_ms * results.n_p_eval as f64);
 
     // now see if grammar works
+    params.params.n_predict = -1;
     let gbnf_string = read_to_string("woolycore/llama.cpp/grammars/json.gbnf").expect("Couldn't read the GBNF grammar file from upstream llama.cpp");
-    params.n_predict = -1;
     let prompt = "<|user|>\nReturn a JSON object that describes an object in a fictional Dark Souls game. The returned JSON object should have 'Title' and 'Description' fields that define the item in the game. Make sure to write the item lore in the style of Fromsoft and thier Dark Souls series of games: there should be over-the-top naming of fantastically gross monsters and tragic historical events from the world, all with a very nihilistic feel.<|end|>\n<|assistant|>\n";
-    let (results, _prediction) = llama.predict_text(&mut params, prompt, Some(&antiprompts), Some(gbnf_string.as_str()), Some(predict_callback)).expect("Failed to run the prediction");
+    params.set_grammar(gbnf_string.as_str());
+    params.set_prompt(prompt);
+    let (results, _prediction) = llama.predict_text(&mut params, Some(predict_callback)).expect("Failed to run the prediction");
     assert_eq!(results.result, 0);
     assert_ne!(results.n_p_eval, 0); // test to see if prompt processing was successfully resumed
 

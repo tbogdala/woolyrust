@@ -17,10 +17,13 @@ MIT licensed, like the core upstream `llama.cpp` it wraps. See `LICENSE` for det
 * Simple high-level Rust interface to use for text generation (`Llama`).
 * Basic samplers of llama.cpp, including: temp, top-k, top-p, min-p, tail free sampling, locally typical sampling, mirostat.
 * Support for llama.cpp's BNF-like grammar rules for sampling.
-* Ability to cache the processed prompt data in memory so that it can be reused to speed up regeneration using the exact same prompt.
+* Ability to cache the current prediction state which can be used to cache processed prompt data in memory 
+  so that it can be reused to speed up regeneration using the exact same prompt. It can also be used to continue
+  predictions that have been frozen.
 * Tokenize text or just get the number of tokens for a given text string.
 * Generate embeddings using models such as `nomic-ai/nomic-embed-text-v1.5-GGUF` on HuggingFace in a batched process.
 
+A change log covering API changes can be found [here](Changelog.md).
 
 ## Build notes
 
