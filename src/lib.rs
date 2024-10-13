@@ -295,7 +295,7 @@ impl Llama {
         unsafe {
             if let Some(tokens) = tokens_opt {
                 ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
-                    tokens.as_mut_ptr(), tokens.len() as i32);
+                    tokens.as_mut_ptr(), tokens.len() as i64);
             } else {
                 ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
                     null_mut(), 0);
