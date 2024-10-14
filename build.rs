@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf};
+use std::{env, path::PathBuf};
 
 use cmake::Config;
 
@@ -9,19 +9,20 @@ fn main() {
 
     // startup a new cmake config for our library
     let mut config: &mut Config = &mut Config::new("woolycore");
+    config = config.define("WOOLY_TESTS", "OFF")
+        .define("BUILD_SHARED_LIBS", "FALSE");
 
-    // enable the CUDA flags if the feature is present
+        // enable the CUDA flags if the feature is present
     // NOTE: metal is automatically enabled in the upstream library and needs
     // no special intervention.
     if cfg!(feature = "cuda") {
-        config = config.define("GGML_CUDA", "On")
+        config = config.define("GGML_CUDA", "On");
     }
 
     // a few more flags for Windows to make sure that it creates a dll that
     // exports all of the functions we want to export.
     if std::env::consts::OS == "windows" {
-        config = config.define("CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS", "TRUE")
-            .define("BUILD_SHARED_LIBS", "TRUE");
+        config = config.define("CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS", "TRUE");
     }
 
     let dst = config.build();
@@ -36,20 +37,6 @@ fn main() {
         let dll_folder_str = if is_release { "Release" } else { "Debug" };
         let dll_folder = build_folder.join(dll_folder_str);
         println!("cargo:rustc-link-search=native={}", dll_folder.display());    
-
-        // the upstream llama.cpp dlls get placed in a different directory
-        // so we're going to copy them into the target folder manually.
-        let bin_folder = dst.join("bin");
-        let llama_dll_path = bin_folder.join("llama.dll");
-        let ggml_dll_path = bin_folder.join("ggml.dll");
-
-
-        if llama_dll_path.exists() {
-            fs::copy(llama_dll_path, dll_folder.join("llama.dll")).expect("unable to copy upstream llama.dll to target dir");
-        }
-        if ggml_dll_path.exists() {
-            fs::copy(ggml_dll_path, dll_folder.join("ggml.dll")).expect("unable to copy upstream ggml.dll to target dir");
-        }
     }
 }
 
