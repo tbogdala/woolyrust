@@ -56,7 +56,7 @@ pub fn step_prediction_test() {
         let next_token = llama.sample_next_token(&mut first_sampler);
 
         if predictions.len() < params.params.n_predict as usize {
-            let processed = llama.process_next_token(next_token, prompt_token_count + predictions.len() as i32);
+            let processed = llama.process_next_token(next_token);
             assert!(processed);
         }
 
@@ -100,7 +100,7 @@ pub fn step_prediction_test() {
         let next_token = llama.sample_next_token(&mut second_sampler);
 
         if predictions.len() < params.params.n_predict as usize {
-            let processed = llama.process_next_token(next_token, prompt_token_count + predictions.len() as i32);
+            let processed = llama.process_next_token(next_token);
             assert!(processed);
         }
 
@@ -139,7 +139,7 @@ pub fn step_prediction_test() {
         // Note: it's important to account for the new token count from the
         // frozen prediction state or else the continuation won't make sense.
         if predictions.len() < params.params.n_predict as usize {
-            let processed = llama.process_next_token(next_token, frozen_pred_token_count + predictions.len() as i32);
+            let processed = llama.process_next_token(next_token);
             assert!(processed);
         }
 

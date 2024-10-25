@@ -275,13 +275,12 @@ impl Llama {
         }
     }
 
-    // runs the provided `next_token` through the forward pass of the model, at the
-    // given `position` in the context. this is a heavy computation and when it's done
-    // `sample_next_token()` can be called to get another token. returns true if
-    // the operation was successful.
-    pub fn process_next_token(&mut self, next_token: Token, position: i32) -> bool {
+    // runs the provided `next_token` through the forward pass of the model. 
+    // this is a heavy computation and when it's done `sample_next_token()` 
+    // can be called to get another token. returns true if the operation was successful.
+    pub fn process_next_token(&mut self, next_token: Token) -> bool {
         unsafe {
-            let result = wooly_process_next_token(self.ctx, next_token, position);
+            let result = wooly_process_next_token(self.ctx, next_token);
             result == 0
         }
     }
