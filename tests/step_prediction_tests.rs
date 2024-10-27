@@ -36,6 +36,13 @@ pub fn step_prediction_test() {
     params.set_antiprompts(&antiprompts);
     params.set_prompt(prompt);    
 
+    params.params.dry_multiplier = 0.8;
+    params.params.dry_base = 1.75;
+    params.params.dry_allowed_length = 2;
+    params.params.dry_penalty_last_n = -1;
+    let seq_breakers = vec!["\n", ":", "\"", "*"];
+    params.set_dry_sequence_breakers(&seq_breakers);
+
     // get the prompt ingested into the context and pull the sampler
     // used in the process so that repeat penalties and such are
     // accounted for.

@@ -83,6 +83,8 @@ pub struct ManagedGptParams {
     native_grammar: Option<CString>,
     native_antis: Option<Vec<CString>>,
     native_antips: Option<Vec<*const i8>>,
+    native_breakers: Option<Vec<CString>>,
+    native_breakersp: Option<Vec<*const i8>>,
 }
 impl ManagedGptParams {
     pub fn defaults() -> Self {
@@ -92,6 +94,8 @@ impl ManagedGptParams {
             native_grammar: None,
             native_antis: None,
             native_antips: None,
+            native_breakers: None,
+            native_breakersp: None,
         }
     }
 
@@ -126,6 +130,25 @@ impl ManagedGptParams {
         self.params.antiprompt_count = count as i32;
         self.native_antis = Some(native_anti_strings);
         self.native_antips = Some(native_anti_pointers);
+    }
+
+    pub fn set_dry_sequence_breakers(&mut self, sequence_breakers: &Vec<&str>) {
+        // allocate the sequence breaker strings
+        // we store the CStrings for them as well as building a vector of pointers to send to the library
+        let mut native_strings: Vec<CString>;
+        let mut native_pointers: Vec<*const i8>;
+        let count = sequence_breakers.len();
+        native_strings = Vec::with_capacity(count);
+        native_pointers = Vec::with_capacity(count);
+        for breaker in sequence_breakers {
+            let native_breaker = CString::new(*breaker).expect("Invalid antiprompt string");
+            native_pointers.push(native_breaker.as_ptr());
+            native_strings.push(native_breaker);
+        }
+        self.params.dry_sequence_breakers = native_pointers.as_mut_ptr();
+        self.params.dry_sequence_breakers_count = count as i32;
+        self.native_breakers = Some(native_strings);
+        self.native_breakersp = Some(native_pointers);
     }
 }
 
