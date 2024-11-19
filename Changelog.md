@@ -4,6 +4,8 @@
 
 * Sync'd changes with upstream woolycore.
 
+* Documentation updates. Generating docs with `cargo` now shows better examples of how to use the library.
+
 * Added `processAdditionalPrompt` to add more prompt tokens before generating text.
 
 ## v0.2.0
