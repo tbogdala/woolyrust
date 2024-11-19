@@ -290,6 +290,17 @@ impl Llama {
         (results.result, GptSampler{is_alive:true, cache_ptr: results.gpt_sampler})
     }
 
+    // takes the sampler that was returned from a previous `process_prompt()` call and 
+    // applies more prompt text to it, updating the sampler state. The returned value is
+    // the number of tokens added or a negative number on error.
+    pub fn process_additional_prompt(&mut self, sampler: &mut GptSampler, additional_prompt: &str) -> i32 {
+        let native_text = CString::new(additional_prompt).expect("Invalid additional prompt string");
+
+        unsafe {
+            wooly_process_additional_prompt(self.ctx, self.model, sampler.cache_ptr, native_text.as_ptr())
+        }
+    }
+
     // simply samples the next token based on the sampler provided. this does not
     // do a forward process on the model - to do that, call `process_next_token()`.
     pub fn sample_next_token(&mut self, sampler: &mut GptSampler) -> Token {

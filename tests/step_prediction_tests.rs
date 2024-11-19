@@ -86,20 +86,16 @@ pub fn step_prediction_test() {
     println!("\n~~~ ---- ~~~~\n\n");
 
     
-    // change prediction parameters so that we can see a change when using
-    // the frozen state made after ingesting prompt.
-    params.params.seed = 1337;
-    params.params.temp = 3.1;
-    params.params.top_k = 40;
-    params.params.top_p = 0.9;
-    params.params.min_p = 0.04;
-    params.params.penalty_repeat = 1.04;
-
-
     // defrost our frozen state from processing the prompt and generate something new
     let (frozen_prompt_token_count, mut second_sampler) = llama.defrost(&mut params, &frozen_prompt);
     assert!(prompt_token_count == frozen_prompt_token_count);
 
+    // inject a little more prompt in just to make it different and test
+    // the ability to add more prompt to ingest. This should produce a 
+    // distinctly different result than the first prediction.
+    let new_prompt_text = "Do you have a suggestion for genre?<|end|>\n<|user|>\nMake it like a Pixar movie script, but with those two authors!<|end|>\n<|assistant|>\n";
+    let new_prompt_tokens = llama.process_additional_prompt(&mut second_sampler, new_prompt_text);
+    assert!(new_prompt_tokens > 0);
 
     // start our prediction loop and make something new with the frozen prompt
     let mut predictions: TokenList = vec![];
@@ -122,15 +118,6 @@ pub fn step_prediction_test() {
 
 
     println!("\n~~~ ---- ~~~~\n\n");
-
-
-    // restore the original parameters
-    params.params.seed = 42;
-    params.params.temp = 0.1;
-    params.params.top_k = 1;
-    params.params.top_p = 1.0;
-    params.params.min_p = 0.1;
-    params.params.penalty_repeat = 1.1;
 
 
     // defrost our frozen state from our first prediction and continue it

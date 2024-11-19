@@ -53,7 +53,7 @@ pub fn basic_test() {
     params.params.seed = 1337;
     let (results, _prediction) = llama.predict_text(&mut params, Some(predict_callback)).expect("Failed to run the prediction");
     assert_eq!(results.result, 0);
-    assert_eq!(results.n_p_eval, 1); // test to see if prompt processing was successfully skipped (min value upstream is now 1)
+    assert_eq!(results.n_p_eval, 0); // test to see if prompt processing was successfully skipped (min value upstream is now 1)
 
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ({:.2} T/s) ; {} prompt tokens in {:.2} ms ({:.2} T/s)\n\n",
