@@ -4,3 +4,5 @@
 # build folders
 target
 
+# local files not meant for publication
+.local*

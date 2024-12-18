@@ -12,7 +12,8 @@ pub fn step_prediction_test() {
 
     let model_filepath = get_test_model_path();
     let mut llama = Llama::new();
-    let load_success = llama.load_model(model_filepath.as_str(), model_params, context_params, true);
+    let load_success =
+        llama.load_model(model_filepath.as_str(), model_params, context_params, true);
     assert_eq!(load_success, true);
     assert_eq!(llama.is_loaded(), true);
 
@@ -34,7 +35,7 @@ pub fn step_prediction_test() {
     let antiprompts = vec!["<|end|>"];
     let prompt = "<|user|>\nWrite the start to the next movie collaboration between Quentin Tarantino and Robert Rodriguez.<|end|>\n<|assistant|>\n";
     params.set_antiprompts(&antiprompts);
-    params.set_prompt(prompt);    
+    params.set_prompt(prompt);
 
     params.params.dry_multiplier = 0.8;
     params.params.dry_base = 1.75;
@@ -49,13 +50,11 @@ pub fn step_prediction_test() {
     let (prompt_token_count, mut first_sampler) = llama.process_prompt(&mut params);
     assert_eq!(prompt_token_count > 0, true);
 
-
     // we freeze the state after processing the prompt so that we can generate
     // a second block of text after the first one without having to reprocess
     // the prompt. not as big of a deal when your prompt is 31 tokens, but it
     // IS a bigger deal when your prompt is 31,000 tokens.
     let frozen_prompt = llama.freeze(&mut params, None);
-
 
     // start our prediction loop now that the prompt has been processed
     let mut predictions: TokenList = vec![];
@@ -74,24 +73,26 @@ pub fn step_prediction_test() {
     let first_prediction_count = predictions.len() as i32;
     let first_prediction_str = llama.detokenize_text(&mut predictions, false);
     println!("Prompt token count: {}", prompt_token_count);
-    println!("Prediction (tokens: {})\n{}", predictions.len(), first_prediction_str);
+    println!(
+        "Prediction (tokens: {})\n{}",
+        predictions.len(),
+        first_prediction_str
+    );
     assert!(!first_prediction_str.is_empty());
     assert!(predictions.len() > 0);
-
 
     // freeze our prediction state too for further testing later
     let frozen_prediction = llama.freeze(&mut params, Some(&mut predictions));
 
-
     println!("\n~~~ ---- ~~~~\n\n");
 
-    
     // defrost our frozen state from processing the prompt and generate something new
-    let (frozen_prompt_token_count, mut second_sampler) = llama.defrost(&mut params, &frozen_prompt);
+    let (frozen_prompt_token_count, mut second_sampler) =
+        llama.defrost(&mut params, &frozen_prompt);
     assert!(prompt_token_count == frozen_prompt_token_count);
 
     // inject a little more prompt in just to make it different and test
-    // the ability to add more prompt to ingest. This should produce a 
+    // the ability to add more prompt to ingest. This should produce a
     // distinctly different result than the first prediction.
     let new_prompt_text = "Do you have a suggestion for genre?<|end|>\n<|user|>\nMake it like a Pixar movie script, but with those two authors!<|end|>\n<|assistant|>\n";
     let new_prompt_tokens = llama.process_additional_prompt(&mut second_sampler, new_prompt_text);
@@ -112,18 +113,20 @@ pub fn step_prediction_test() {
 
     // print out our second prediction
     let second_prediction_str = llama.detokenize_text(&mut predictions, false);
-    println!("Prediction (tokens: {})\n{}", predictions.len(), second_prediction_str);
+    println!(
+        "Prediction (tokens: {})\n{}",
+        predictions.len(),
+        second_prediction_str
+    );
     assert!(!second_prediction_str.is_empty());
     assert!(predictions.len() > 0);
 
-
     println!("\n~~~ ---- ~~~~\n\n");
 
-
     // defrost our frozen state from our first prediction and continue it
-    let (frozen_pred_token_count, mut third_sampler) = llama.defrost(&mut params, &frozen_prediction);
+    let (frozen_pred_token_count, mut third_sampler) =
+        llama.defrost(&mut params, &frozen_prediction);
     assert!(prompt_token_count + first_prediction_count == frozen_pred_token_count);
-    
 
     // start our prediction loop and continue our frozen prediction from earlier
     let mut predictions: TokenList = vec![];
@@ -142,7 +145,12 @@ pub fn step_prediction_test() {
 
     // print out our second prediction
     let third_prediction_str = llama.detokenize_text(&mut predictions, false);
-    println!("Continued prediction (tokens: {})\n{}{}", predictions.len(), first_prediction_str, third_prediction_str);
+    println!(
+        "Continued prediction (tokens: {})\n{}{}",
+        predictions.len(),
+        first_prediction_str,
+        third_prediction_str
+    );
     assert!(!third_prediction_str.is_empty());
     assert!(predictions.len() > 0);
 }
@@ -153,7 +161,9 @@ pub fn get_test_model_path() -> String {
     if let Ok(fp) = model_filepath {
         return fp;
     } else {
-        println!("Set WOOLY_TEST_MODEL_FILE environment variable to the gguf file to use for testing");
+        println!(
+            "Set WOOLY_TEST_MODEL_FILE environment variable to the gguf file to use for testing"
+        );
         exit(1);
     }
 }
