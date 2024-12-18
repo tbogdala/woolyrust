@@ -1,6 +1,6 @@
 //! # Dataset Generator Example
 //!
-//! This example demonstrates how to generate a synthetic dataset using the woolyrust.
+//! This example demonstrates how to generate a synthetic dataset using the woolyrust library.
 //!
 //! The program takes in several command-line arguments to customize the generation process, including:
 //! - The path to the GGUF model file
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
     // Set the text generation parameters up
     let mut params = ManagedGptParams::defaults();
     params.params.seed = u32::MAX;
-    params.params.n_threads = -1;
+    params.params.n_threads = cli.threads;
     params.params.n_predict = cli.predict_length;
     params.params.temp = cli.temperature;
     params.params.top_k = cli.top_k;
@@ -226,6 +226,13 @@ struct DatasetGenArgs {
         help = "Number of layers to offload to the GPU."
     )]
     gpu_layers: i32,
+
+    #[arg(
+        long("threads"),
+        default_value_t = -1,
+        help = "Number of CPU threads used for processing."
+    )]
+    threads: i32,
 
     #[arg(
         short('c'),
