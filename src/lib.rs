@@ -4,10 +4,10 @@
 
 //! # WoolyRust: A Rust Library for LLM Text Inference
 //!
-//! `woolyrust` is a Rust library designed to facilitate the loading and inference of 
-//! LLMs using the llama.cpp library. It provides a high-level interface for interacting 
-//! with language models, allowing users to perform tasks such as text prediction, 
-//! tokenization, and detokenization. This high level interface simplifies the process of 
+//! `woolyrust` is a Rust library designed to facilitate the loading and inference of
+//! LLMs using the llama.cpp library. It provides a high-level interface for interacting
+//! with language models, allowing users to perform tasks such as text prediction,
+//! tokenization, and detokenization. This high level interface simplifies the process of
 //! integrating language models into Rust applications.
 //!
 //! ## Features
@@ -19,7 +19,7 @@
 //!
 //! ## Example Usage
 //!
-//! Below is a simple example demonstrating how to use `woolyrust` to predict text. 
+//! Below is a simple example demonstrating how to use `woolyrust` to predict text.
 //! This example includes setting up the model, defining parameters, and generating a response to a prompt.
 //!
 //! ```rust
@@ -79,14 +79,17 @@
 //! ## Testing
 //!
 //! For a more comprehensive example, refer to the `basic_test.rs` and `step_prediction_tests.rs` files
-//! in the `tests` directory. These test demonstrates loading a model, setting parameters, 
+//! in the `tests` directory. These test demonstrates loading a model, setting parameters,
 //! and generating text with prompt caching and grammar rules.
 //!
 //! ```bash
 //! cargo test --release -- --nocapture --test-threads 1
 //! ```
 
-use std::{ffi::{c_void, CStr, CString}, ptr::null_mut};
+use std::{
+    ffi::{c_void, CStr, CString},
+    ptr::null_mut,
+};
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 /// Represents a token in the context of the language model.
@@ -95,7 +98,7 @@ pub type Token = i32;
 /// A list of tokens used for various operations within the language model.
 pub type TokenList = Vec<Token>;
 
-/// Represents an embedding, which is a vector of floating-point numbers representing 
+/// Represents an embedding, which is a vector of floating-point numbers representing
 /// the semantic meaning of a token or a sequence of tokens.
 pub type Embedding = Vec<f32>;
 
@@ -129,7 +132,7 @@ pub struct FrozenState {
 }
 impl Into<*mut c_void> for &mut FrozenState {
     fn into(self) -> *mut c_void {
-        self.wrapped_ptr  
+        self.wrapped_ptr
     }
 }
 impl Drop for FrozenState {
@@ -152,7 +155,7 @@ pub struct GptSampler {
 }
 impl Into<*mut c_void> for &mut GptSampler {
     fn into(self) -> *mut c_void {
-        self.wrapped_ptr  
+        self.wrapped_ptr
     }
 }
 impl Drop for GptSampler {
@@ -171,7 +174,7 @@ impl Drop for GptSampler {
 /// including prompt handling, token generation, and other configuration options. This struct is used
 /// throughout the text generation process to ensure consistent behavior and to allow fine-grained control
 /// over the model's output.
-/// 
+///
 /// # Notes:
 /// Rust's lifetime management makes it necessary to make sure the CStrings
 /// and native pointers stay alive as long as the parameters do, so this
@@ -188,8 +191,8 @@ pub struct ManagedGptParams {
 }
 impl ManagedGptParams {
     pub fn defaults() -> Self {
-        Self { 
-            params: new_text_gen_params(), 
+        Self {
+            params: new_text_gen_params(),
             native_prompt: None,
             native_grammar: None,
             native_antis: None,
@@ -252,7 +255,6 @@ impl ManagedGptParams {
     }
 }
 
-
 /// Returns the default model parameters for loading models.
 ///
 /// This function calls the underlying C function `wooly_get_default_llama_model_params`
@@ -260,7 +262,7 @@ impl ManagedGptParams {
 pub fn get_default_model_params() -> wooly_llama_model_params {
     unsafe {
         return wooly_get_default_llama_model_params();
-    } 
+    }
 }
 
 /// Returns the default context parameters for the LLaMA model.
@@ -294,7 +296,7 @@ use std::f32;
 /// - `embd2` - A slice of f32 representing the second embedding.
 ///
 /// # Returns
-/// - The cosine similarity between the two embeddings as an f32. If one or both vectors are zero vectors, 
+/// - The cosine similarity between the two embeddings as an f32. If one or both vectors are zero vectors,
 /// the function returns 0.0 unless both are zero vectors, in which case it returns 1.0.
 pub fn embeddings_similarity_cos(embd1: &[f32], embd2: &[f32]) -> f32 {
     let n = embd1.len();
@@ -327,14 +329,14 @@ pub fn embeddings_similarity_cos(embd1: &[f32], embd2: &[f32]) -> f32 {
 /// generating text, and handling embeddings. It provides methods to load and free the model, process prompts,
 /// generate text based on prompts, and manage the model's state through freezing and defrosting.
 ///
-/// Once a model is loaded, `predict_text()` can be called to generate text based on the given options. For 
-/// finer control over text generation, `process_prompt()` can be used to ingest prompt text and then 
+/// Once a model is loaded, `predict_text()` can be called to generate text based on the given options. For
+/// finer control over text generation, `process_prompt()` can be used to ingest prompt text and then
 /// `sample_next_token()` and then `process_next_token()` can be called iteratively to generate text token by token.
-/// 
+///
 /// # Fields
 /// - `ctx`: A raw pointer to the context of the LLaMA model.
 /// - `model`: A raw pointer to the LLaMA model.
-/// - `prompt_cache`: A raw pointer to the prompt cache, used to store intermediate results for efficient re-use. 
+/// - `prompt_cache`: A raw pointer to the prompt cache, used to store intermediate results for efficient re-use.
 /// - `loaded_context_len`: The length of the loaded context, representing the number of tokens in the context.
 /// - `loaded_context_params`: An optional struct containing parameters used for creating the context. This is set when a model is successfully loaded.
 /// - `loaded_model_params`: An optional struct containing parameters used for loading the model. This is set when a model is successfully loaded.
@@ -356,14 +358,14 @@ impl Drop for Llama {
 
 impl Llama {
     pub fn new() -> Self {
-        return Self{
+        return Self {
             ctx: null_mut(),
             model: null_mut(),
             prompt_cache: null_mut(),
             loaded_context_len: 0,
             loaded_context_params: None,
             loaded_model_params: None,
-        }
+        };
     }
 
     /// Loads a model from the specified file path using the provided model and context parameters.
@@ -376,16 +378,26 @@ impl Llama {
     ///
     /// # Returns
     /// - `true` if the model is successfully loaded and the context is created and `false` if the loading process fails.
-    pub fn load_model(&mut self, model_file: &str, model_params: wooly_llama_model_params, 
-        context_params: wooly_llama_context_params, silence: bool) -> bool {
-        // free the model and prompt cache if there's one set already 
+    pub fn load_model(
+        &mut self,
+        model_file: &str,
+        model_params: wooly_llama_model_params,
+        context_params: wooly_llama_context_params,
+        silence: bool,
+    ) -> bool {
+        // free the model and prompt cache if there's one set already
         self.free_model();
 
         // attempt to load the model
         let result: wooly_load_model_result;
         let native_model_path = CString::new(model_file).unwrap();
         unsafe {
-            result = wooly_load_model(native_model_path.as_ptr(), model_params, context_params, silence);
+            result = wooly_load_model(
+                native_model_path.as_ptr(),
+                model_params,
+                context_params,
+                silence,
+            );
         }
 
         // return false if we don't get the right set of pointers back
@@ -432,7 +444,7 @@ impl Llama {
     /// and a `GptSampler` instance that should be used to continue generating text.
     ///
     /// This function does not do any token generation - it only prepares the model's context for generation.
-    /// 
+    ///
     /// # Parameters
     /// - `params`: A mutable reference to `ManagedGptParams` containing the parameters for processing the prompt.
     ///
@@ -440,15 +452,21 @@ impl Llama {
     /// - A tuple containing:
     ///   - The number of tokens processed as an `i32`.
     ///   - A `GptSampler` instance to use in the subsequent generation steps.
-    pub fn process_prompt(&mut self, params: &mut ManagedGptParams) -> (i32, GptSampler){
+    pub fn process_prompt(&mut self, params: &mut ManagedGptParams) -> (i32, GptSampler) {
         let results: wooly_process_prompt_results;
         unsafe {
             results = wooly_process_prompt(params.params, self.ctx, self.model);
         }
-        (results.result, GptSampler{is_alive:true, wrapped_ptr: results.gpt_sampler})
+        (
+            results.result,
+            GptSampler {
+                is_alive: true,
+                wrapped_ptr: results.gpt_sampler,
+            },
+        )
     }
 
-    /// Takes a sampler that was returned from a previous `process_prompt()` call 
+    /// Takes a sampler that was returned from a previous `process_prompt()` call
     /// and applies additional prompt text to it, updating the sampler's state.
     ///
     /// # Parameters
@@ -457,17 +475,27 @@ impl Llama {
     ///
     /// # Returns
     /// - the number of tokens added to the sampler's state, or a negative number if an error occurred.
-    pub fn process_additional_prompt(&mut self, sampler: &mut GptSampler, additional_prompt: &str) -> i32 {
-        let native_text = CString::new(additional_prompt).expect("Invalid additional prompt string");
+    pub fn process_additional_prompt(
+        &mut self,
+        sampler: &mut GptSampler,
+        additional_prompt: &str,
+    ) -> i32 {
+        let native_text =
+            CString::new(additional_prompt).expect("Invalid additional prompt string");
 
         unsafe {
-            wooly_process_additional_prompt(self.ctx, self.model, sampler.wrapped_ptr, native_text.as_ptr())
+            wooly_process_additional_prompt(
+                self.ctx,
+                self.model,
+                sampler.wrapped_ptr,
+                native_text.as_ptr(),
+            )
         }
     }
 
     /// Samples the next token based on the provided sampler.
     ///
-    /// This function does not perform a forward pass through the model. Call 
+    /// This function does not perform a forward pass through the model. Call
     /// `process_next_token()` after sampling in order to advance the model's state.
     ///
     /// # Parameters
@@ -476,20 +504,18 @@ impl Llama {
     /// # Returns
     /// - the next sampled `Token`.
     pub fn sample_next_token(&mut self, sampler: &mut GptSampler) -> Token {
-        unsafe {
-            wooly_sample_next(self.ctx, sampler.into())
-        }
+        unsafe { wooly_sample_next(self.ctx, sampler.into()) }
     }
 
     /// Processes the provided `next_token` through the forward pass of the model.
     ///
     /// This operation is computationally intensive. Once completed, `sample_next_token()`
-    /// can be called to obtain the next token. 
+    /// can be called to obtain the next token.
     ///
     /// # Parameters
     ///
     /// - `next_token`: The token to be processed through the model's forward pass.
-    /// 
+    ///
     /// # Returns
     /// - The function returns `true` if the operation was successful, and `false` otherwise.
     pub fn process_next_token(&mut self, next_token: Token) -> bool {
@@ -512,19 +538,36 @@ impl Llama {
     ///
     /// # Returns
     /// - a `FrozenState` object that holds the frozen state of the model.
-    pub fn freeze(&mut self, params: &mut ManagedGptParams, tokens_opt: Option<&mut TokenList>) -> FrozenState {
+    pub fn freeze(
+        &mut self,
+        params: &mut ManagedGptParams,
+        tokens_opt: Option<&mut TokenList>,
+    ) -> FrozenState {
         let ptr: *mut c_void;
         unsafe {
             if let Some(tokens) = tokens_opt {
-                ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
-                    tokens.as_mut_ptr(), tokens.len() as i64);
+                ptr = wooly_freeze_prediction_state(
+                    params.params,
+                    self.ctx,
+                    self.model,
+                    tokens.as_mut_ptr(),
+                    tokens.len() as i64,
+                );
             } else {
-                ptr = wooly_freeze_prediction_state(params.params, self.ctx, self.model,  
-                    null_mut(), 0);
+                ptr = wooly_freeze_prediction_state(
+                    params.params,
+                    self.ctx,
+                    self.model,
+                    null_mut(),
+                    0,
+                );
             }
         }
 
-        FrozenState{is_alive: true, wrapped_ptr: ptr}
+        FrozenState {
+            is_alive: true,
+            wrapped_ptr: ptr,
+        }
     }
 
     /// Restores the model's state from the provided `frozen_state` and resets the loaded context.
@@ -536,24 +579,39 @@ impl Llama {
     /// # Returns
     /// - `(i32, GptSampler)`: A tuple where the first element is the number of frozen tokens processed,
     ///   and the second element is a new `GptSampler` instance which should be used for future predictions.
-    pub fn defrost(&mut self, params: &mut ManagedGptParams, frozen_state: &FrozenState) -> (i32, GptSampler) {
+    pub fn defrost(
+        &mut self,
+        params: &mut ManagedGptParams,
+        frozen_state: &FrozenState,
+    ) -> (i32, GptSampler) {
         let results: wooly_process_prompt_results;
         unsafe {
-            results = wooly_defrost_prediction_state(params.params, self.ctx, self.model, frozen_state.wrapped_ptr.into());
+            results = wooly_defrost_prediction_state(
+                params.params,
+                self.ctx,
+                self.model,
+                frozen_state.wrapped_ptr.into(),
+            );
         }
 
-        (results.result, GptSampler{is_alive:true, wrapped_ptr: results.gpt_sampler})
+        (
+            results.result,
+            GptSampler {
+                is_alive: true,
+                wrapped_ptr: results.gpt_sampler,
+            },
+        )
     }
 
     /// Predicts text using the loaded language model (LLM).
     ///
     /// This function generates text based on the provided parameters and a callback function
-    /// can be optionally supplied to handle token updates during the prediction process. 
-    /// 
+    /// can be optionally supplied to handle token updates during the prediction process.
+    ///
     /// If `params.params.prompt_cache_all` is set to `true`, the state of the LLM will be cached
     /// after processing the prompt. This allows for efficient re-use of the LLM state in subsequent
-    /// predictions when the prompt remains exactly the same. 
-    /// 
+    /// predictions when the prompt remains exactly the same.
+    ///
     /// # Parameters
     /// - `params`: A mutable reference to `ManagedGptParams` containing the parameters for the prediction.
     /// - `callback`: A callback function of type `wooly_token_update_callback` that is invoked during token updates.
@@ -561,27 +619,40 @@ impl Llama {
     /// # Returns
     /// - `Ok((wooly_predict_result, String))`: A tuple containing the result of the prediction and the predicted text as a `String`.
     /// - `Err(anyhow::Error)`: An error if the prediction fails, including the return value from the prediction function.
-    pub fn predict_text(&mut self, 
-        params: &mut ManagedGptParams, 
+    pub fn predict_text(
+        &mut self,
+        params: &mut ManagedGptParams,
         callback: wooly_token_update_callback,
     ) -> anyhow::Result<(wooly_predict_result, String)> {
         // allocate the output string towards a maximum of 4-bytes per utf-8 worst case for the whole context
         // and a generous estimate of 10 characters per token.
-        let predicted_text_size = (self.loaded_context_len * 4 * 10) as i64 ;
+        let predicted_text_size = (self.loaded_context_len * 4 * 10) as i64;
         let mut predicted_text = Vec::with_capacity((predicted_text_size) as usize);
-        let prediction_result = unsafe { 
-            wooly_predict(params.params, self.ctx, self.model, false, predicted_text.as_mut_ptr(), predicted_text_size, self.prompt_cache, callback) 
+        let prediction_result = unsafe {
+            wooly_predict(
+                params.params,
+                self.ctx,
+                self.model,
+                false,
+                predicted_text.as_mut_ptr(),
+                predicted_text_size,
+                self.prompt_cache,
+                callback,
+            )
         };
 
         if prediction_result.result != 0 {
-            return Err(anyhow::anyhow!("Failed to predict the text; return value: {}", prediction_result.result));
+            return Err(anyhow::anyhow!(
+                "Failed to predict the text; return value: {}",
+                prediction_result.result
+            ));
         }
 
         // handle freeing any previous prompt_cache and store the new one, if requested to by the caller
-        if (!self.prompt_cache.is_null() && self.prompt_cache != prediction_result.prompt_cache) || !params.params.prompt_cache_all {
-            unsafe { 
-                wooly_free_prompt_cache(self.prompt_cache) 
-            };
+        if (!self.prompt_cache.is_null() && self.prompt_cache != prediction_result.prompt_cache)
+            || !params.params.prompt_cache_all
+        {
+            unsafe { wooly_free_prompt_cache(self.prompt_cache) };
             self.prompt_cache = null_mut();
         }
         if params.params.prompt_cache_all {
@@ -603,19 +674,25 @@ impl Llama {
     ///
     /// # Returns
     /// - the number of tokens in the `text_prompt` as an `i64`.
-    pub fn get_token_count(&mut self, text_prompt: &str, add_special: bool, parse_special: bool) -> i64 {
+    pub fn get_token_count(
+        &mut self,
+        text_prompt: &str,
+        add_special: bool,
+        parse_special: bool,
+    ) -> i64 {
         // make the native string of our text prompt
         let native_text = CString::new(text_prompt).expect("Invalid prompt string");
 
         // run the library call to get the tokens
         unsafe {
             let tokens_count = wooly_llama_tokenize(
-                self.model, 
-                native_text.as_ptr(), 
-                add_special, 
-                parse_special, 
-                null_mut(), 
-                0);
+                self.ctx,
+                native_text.as_ptr(),
+                add_special,
+                parse_special,
+                null_mut(),
+                0,
+            );
             return tokens_count;
         }
     }
@@ -629,28 +706,33 @@ impl Llama {
     ///
     /// # Returns
     /// - a `TokenList` containing the tokens generated by the loaded model.
-    pub fn tokenize_text(&mut self, text_prompt: &str, add_special: bool, parse_special: bool) -> TokenList
-    {
+    pub fn tokenize_text(
+        &mut self,
+        text_prompt: &str,
+        add_special: bool,
+        parse_special: bool,
+    ) -> TokenList {
         // make the native string of our text prompt
         let native_text = CString::new(text_prompt).expect("Invalid prompt string");
-        
+
         // create the output token buffer with a worst case size of one token per character
         let token_buffer_size = text_prompt.len();
         let mut token_buff = Vec::with_capacity((token_buffer_size) as usize);
-        
+
         // run the library call to get the tokens
         unsafe {
             let tokens_count = wooly_llama_tokenize(
-                self.model, 
-                native_text.as_ptr(), 
-                add_special, 
-                parse_special, 
-                token_buff.as_mut_ptr(), 
-                token_buffer_size as i64);
+                self.ctx,
+                native_text.as_ptr(),
+                add_special,
+                parse_special,
+                token_buff.as_mut_ptr(),
+                token_buffer_size as i64,
+            );
             token_buff.set_len(tokens_count as usize);
         }
 
-        return token_buff
+        return token_buff;
     }
 
     /// Converts a list of tokens into a human-readable string.
@@ -665,23 +747,23 @@ impl Llama {
     ///
     /// # Returns
     /// - a `String` representing the detokenized text.
-    pub fn detokenize_text(&mut self, tokens: &mut TokenList, render_specials: bool) -> String
-    {
-        // allocate the output string towards a maximum of 4-bytes per utf-8 worst case 
+    pub fn detokenize_text(&mut self, tokens: &mut TokenList, render_specials: bool) -> String {
+        // allocate the output string towards a maximum of 4-bytes per utf-8 worst case
         // for the whole context and a generous estimate of 10 characters per token.
-        let output_text_size = (self.loaded_context_len * 4 * 10) as i64 ;
+        let output_text_size = (self.loaded_context_len * 4 * 10) as i64;
         let mut output_text = Vec::with_capacity((output_text_size) as usize);
 
         // run the library call to get the tokens
         unsafe {
             let _char_count = wooly_llama_detokenize(
-                self.ctx, 
-                render_specials, 
-                tokens.as_mut_ptr(), 
-                tokens.len() as i64, 
-                output_text.as_mut_ptr(), 
-                output_text_size);
-            let c_str_result: &CStr =CStr::from_ptr(output_text.as_mut_ptr());
+                self.ctx,
+                render_specials,
+                tokens.as_mut_ptr(),
+                tokens.len() as i64,
+                output_text.as_mut_ptr(),
+                output_text_size,
+            );
+            let c_str_result: &CStr = CStr::from_ptr(output_text.as_mut_ptr());
             let result_string: String = c_str_result.to_str().unwrap().to_owned();
             return result_string;
         }
@@ -701,8 +783,11 @@ impl Llama {
     /// The number of embeddings generated depends on the pooling type:
     /// - If pooling type is `LlamaPoolingType::None`, an embedding vector is generated for every token.
     /// - Otherwise, one embedding vector is generated per prompt.
-    pub fn make_embeddings(&mut self, embd_normalize: EmbeddingNormalization, tokenized_prompts: &mut Vec<TokenList>) -> Option<Vec<Embedding>>
-    {
+    pub fn make_embeddings(
+        &mut self,
+        embd_normalize: EmbeddingNormalization,
+        tokenized_prompts: &mut Vec<TokenList>,
+    ) -> Option<Vec<Embedding>> {
         // if we dont have a loaded context, just return here without an answer
         if self.loaded_context_params.is_none() {
             return None;
@@ -710,16 +795,15 @@ impl Llama {
         let context_params = self.loaded_context_params.unwrap();
 
         // count the number of embeddings needed.
-        let embd_needed = 
-            if context_params.pooling_type == LlamaPoolingType::None as i32 {
-                // no pooling means we get a full embedding vector for every token, so
-                // go through all the prompts and figure out the total number of tokens
-                // and change the needed float count accordingly
-                tokenized_prompts.iter().fold(0, |acc, p| acc + p.len())
-            } else {
-                tokenized_prompts.len()
-            };
-        
+        let embd_needed = if context_params.pooling_type == LlamaPoolingType::None as i32 {
+            // no pooling means we get a full embedding vector for every token, so
+            // go through all the prompts and figure out the total number of tokens
+            // and change the needed float count accordingly
+            tokenized_prompts.iter().fold(0, |acc, p| acc + p.len())
+        } else {
+            tokenized_prompts.len()
+        };
+
         // get the size of the embedding vectors and scale the floats needed
         // by that size and make the output buffer
         let n_embd = unsafe { wooly_llama_n_embd(self.model) };
@@ -736,16 +820,17 @@ impl Llama {
         unsafe {
             let success = wooly_llama_make_embeddings(
                 self.model,
-                self.ctx, 
-                context_params.n_batch as i32, 
-                context_params.pooling_type as i32, 
-                embd_normalize as i32, 
-                tp_ptrs.len() as i64, 
-                tp_ptrs.as_mut_ptr(), 
-                tp_sizes.as_mut_ptr(), 
-                output_embeddings.as_mut_ptr(), 
-                total_floats_needed as i64);
-            
+                self.ctx,
+                context_params.n_batch as i32,
+                context_params.pooling_type as i32,
+                embd_normalize as i32,
+                tp_ptrs.len() as i64,
+                tp_ptrs.as_mut_ptr(),
+                tp_sizes.as_mut_ptr(),
+                output_embeddings.as_mut_ptr(),
+                total_floats_needed as i64,
+            );
+
             if success < 0 {
                 None
             } else {
@@ -753,7 +838,12 @@ impl Llama {
                 // then we can assume we got the number of embeddings we requested, so
                 // force the length of the collection and then chunk them out into separate vectors.
                 output_embeddings.set_len(total_floats_needed);
-                Some(output_embeddings.chunks(n_embd as usize).map(|c| c.to_vec()).collect())
+                Some(
+                    output_embeddings
+                        .chunks(n_embd as usize)
+                        .map(|c| c.to_vec())
+                        .collect(),
+                )
             }
         }
     }

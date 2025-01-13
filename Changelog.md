@@ -2,7 +2,10 @@
 
 ## v0.4.0
 
+* Sync'd changes with upstream woolycore.
+
 * Added the `dataset_generator.rs` example as a command-line tool to generate datasets.
+
 
 ## v0.3.0
 
