@@ -87,8 +87,8 @@
 //! ```
 
 use std::{
-    ffi::{c_void, CStr, CString},
-    ptr::null_mut,
+    ffi::{CStr, CString},
+    ptr::{null, null_mut},
 };
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -122,16 +122,29 @@ pub enum EmbeddingNormalization {
     PNorm = 3,
 }
 
+/// This represents one turn in the prompt template. A whole prompt for the LLM can be
+/// generated from a vector of these.
+pub struct ChatMessage {
+    pub role: String, // Roles can be 'user', 'assistant' or 'system'
+    pub content: String,
+}
+
+impl ChatMessage {
+    pub fn new(role: String, content: String) -> Self {
+        Self { role, content }
+    }
+}
+
 /// This is a wrapper struct to encapsulate the raw C pointer used in this FFI library.
 /// It adds some convenience functions for converting to the C pointer needed as well
 /// as making sure to free itself when it's dropped from scope.
 #[derive(Debug)]
 pub struct FrozenState {
     pub is_alive: bool,
-    wrapped_ptr: *mut c_void,
+    wrapped_ptr: *mut wooly_prompt_cache_t,
 }
-impl Into<*mut c_void> for &mut FrozenState {
-    fn into(self) -> *mut c_void {
+impl Into<*mut wooly_prompt_cache_t> for &mut FrozenState {
+    fn into(self) -> *mut wooly_prompt_cache_t {
         self.wrapped_ptr
     }
 }
@@ -151,10 +164,10 @@ impl Drop for FrozenState {
 #[derive(Debug)]
 pub struct GptSampler {
     pub is_alive: bool,
-    wrapped_ptr: *mut c_void,
+    wrapped_ptr: *mut wooly_sampler_t,
 }
-impl Into<*mut c_void> for &mut GptSampler {
-    fn into(self) -> *mut c_void {
+impl Into<*mut wooly_sampler_t> for &mut GptSampler {
+    fn into(self) -> *mut wooly_sampler_t {
         self.wrapped_ptr
     }
 }
@@ -342,9 +355,9 @@ pub fn embeddings_similarity_cos(embd1: &[f32], embd2: &[f32]) -> f32 {
 /// - `loaded_model_params`: An optional struct containing parameters used for loading the model. This is set when a model is successfully loaded.
 #[derive(Debug, Clone)]
 pub struct Llama {
-    ctx: *mut c_void,
-    model: *mut c_void,
-    prompt_cache: *mut c_void,
+    ctx: *mut wooly_llama_context_t,
+    model: *mut wooly_llama_model_t,
+    prompt_cache: *mut wooly_prompt_cache_t,
     loaded_context_len: u32,
     loaded_context_params: Option<wooly_llama_context_params>,
     loaded_model_params: Option<wooly_llama_model_params>,
@@ -435,6 +448,71 @@ impl Llama {
     /// Checks if both the model and the context have been successfully loaded.
     pub fn is_loaded(&self) -> bool {
         return !self.ctx.is_null() && !self.model.is_null();
+    }
+
+    /// Constructs a prompt from a list of chat messages and applies a chat template.
+    /// The constructed prompt is returned and the total number of characters procssed.
+    pub fn makePromptFromMessages(
+        &self,
+        messages: Vec<ChatMessage>,
+        template_override: Option<String>,
+    ) -> (String, i64) {
+        // handle empty lists
+        if messages.is_empty() {
+            return ("".to_string(), 0);
+        }
+
+        // turn the template override into a native string
+        let tmpl_override_native = if let Some(ovr) = template_override {
+            Some(CString::new(ovr).expect("Invalid template override string"))
+        } else {
+            None
+        };
+
+        // build our data structures for the message log conversion
+        let message_count = messages.len();
+        let mut message_log: Vec<wooly_chat_message> = Vec::with_capacity((message_count) as usize);
+
+        let mut native_strings = vec![];
+        for i in 0..message_count {
+            let role_string =
+                CString::new(messages[i].role.clone()).expect("Invalid role string in ChatMessage");
+            let content_string = CString::new(messages[i].content.clone())
+                .expect("Invalid content string in ChatMessage");
+
+            let mlog = wooly_chat_message {
+                role: role_string.as_ptr(),
+                content: content_string.as_ptr(),
+            };
+            message_log.push(mlog);
+
+            native_strings.push(role_string);
+            native_strings.push(content_string);
+        }
+
+        // try and build the prompt based on the default chat template for the model, or the override
+        // if specified.
+        let output_text_size = (self.loaded_context_len * 4 * 10) as i64;
+        let mut output_text = Vec::with_capacity((output_text_size) as usize);
+
+        let maybe_template_override = match tmpl_override_native {
+            Some(ref cstr) => cstr.as_ptr(),
+            None => null(),
+        };
+        unsafe {
+            let num_processed = wooly_apply_chat_template(
+                self.model,
+                maybe_template_override,
+                message_log.as_ptr(),
+                message_count as i64,
+                output_text.as_mut_ptr(),
+                output_text_size,
+            );
+
+            let c_str_result: &CStr = CStr::from_ptr(output_text.as_mut_ptr());
+            let result_string: String = c_str_result.to_str().unwrap().to_owned();
+            (result_string, num_processed)
+        }
     }
 
     /// Processes the given prompt using the parameters provided within the context of the loaded model.
@@ -543,7 +621,7 @@ impl Llama {
         params: &mut ManagedGptParams,
         tokens_opt: Option<&mut TokenList>,
     ) -> FrozenState {
-        let ptr: *mut c_void;
+        let ptr: *mut wooly_prompt_cache_t;
         unsafe {
             if let Some(tokens) = tokens_opt {
                 ptr = wooly_freeze_prediction_state(
