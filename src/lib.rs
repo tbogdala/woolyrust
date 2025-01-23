@@ -455,6 +455,7 @@ impl Llama {
     pub fn makePromptFromMessages(
         &self,
         messages: Vec<ChatMessage>,
+        include_assistant: bool,
         template_override: Option<String>,
     ) -> (String, i64) {
         // handle empty lists
@@ -503,6 +504,7 @@ impl Llama {
             let num_processed = wooly_apply_chat_template(
                 self.model,
                 maybe_template_override,
+                include_assistant,
                 message_log.as_ptr(),
                 message_count as i64,
                 output_text.as_mut_ptr(),

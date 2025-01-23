@@ -35,7 +35,7 @@ pub fn basic_test() {
         ChatMessage::new("system".to_string(), "You are a creative writing artificial intelligence.".to_string()),
         ChatMessage::new("user".to_string(), "Write the start to the next movie collaboration between Quentin Tarantino and Robert Rodriguez.".to_string()),
     ];
-    let (prompt, _num_processed) = llama.makePromptFromMessages(messages, None);
+    let (prompt, _num_processed) = llama.makePromptFromMessages(messages, true, None);
     params.set_prompt(prompt.as_str());
 
     let (results, prediction) = llama
@@ -81,7 +81,7 @@ pub fn basic_test() {
         ChatMessage::new("system".to_string(), "You are a creative writing artificial intelligence.".to_string()),
         ChatMessage::new("user".to_string(), "Return a JSON object that describes an object in a fictional Dark Souls game. The returned JSON object should have 'Title' and 'Description' fields that define the item in the game. Make sure to write the item lore in the style of Fromsoft and thier Dark Souls series of games: there should be over-the-top naming of fantastically gross monsters and tragic historical events from the world, all with a very nihilistic feel.".to_string()),
     ];
-    let (prompt, _num_processed) = llama.makePromptFromMessages(messages, None);
+    let (prompt, _num_processed) = llama.makePromptFromMessages(messages, true, None);
     params.set_prompt(prompt.as_str());
 
     let (results, _prediction) = llama
