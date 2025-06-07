@@ -9,10 +9,12 @@ fn main() {
 
     // startup a new cmake config for our library
     let mut config: &mut Config = &mut Config::new("woolycore");
-    config = config.define("WOOLY_TESTS", "OFF")
+    config = config
+        .define("WOOLY_TESTS", "OFF")
+        .define("LLAMA_CURL", "OFF")
         .define("BUILD_SHARED_LIBS", "FALSE");
 
-        // enable the CUDA flags if the feature is present
+    // enable the CUDA flags if the feature is present
     // NOTE: metal is automatically enabled in the upstream library and needs
     // no special intervention.
     if cfg!(feature = "cuda") {
@@ -28,7 +30,10 @@ fn main() {
     let dst = config.build();
     let build_folder = dst.join("build");
     println!("cargo:rustc-link-search=native={}", build_folder.display());
-    println!("cargo:rustc-link-search=native={}", dst.join("lib").display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("lib").display()
+    );
     println!("cargo:rustc-link-lib=dylib=woolycore");
 
     // Windows is the special child, like always. Do some extra path and
@@ -36,7 +41,7 @@ fn main() {
     if std::env::consts::OS == "windows" {
         let dll_folder_str = if is_release { "Release" } else { "Debug" };
         let dll_folder = build_folder.join(dll_folder_str);
-        println!("cargo:rustc-link-search=native={}", dll_folder.display());    
+        println!("cargo:rustc-link-search=native={}", dll_folder.display());
     }
 }
 
